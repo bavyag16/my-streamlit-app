@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 import matplotlib.pyplot as plt
-import shap
+# import shap
 
 # ---------------- PAGE CONFIG ---------------- #
 st.set_page_config(page_title="Churn Intelligence System", layout="wide")
