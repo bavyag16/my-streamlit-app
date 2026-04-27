@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import random
 
 # ---------------- PAGE CONFIG ---------------- #
 st.set_page_config(page_title="Churn Intelligence System", layout="wide")
@@ -93,8 +92,19 @@ elif page == "Single Prediction":
 
     if st.button("🚀 Predict Churn"):
 
-        # ---------------- DEMO LOGIC ---------------- #
-        prob = round(random.uniform(0.2, 0.9), 2)
+        # ---------------- SMART DEMO LOGIC ---------------- #
+        prob = 0.3
+
+        if tenure < 6:
+            prob += 0.3
+        if monthly > 500:
+            prob += 0.2
+        if contract == "Month-to-month":
+            prob += 0.2
+        if senior == 1:
+            prob += 0.1
+
+        prob = min(prob, 0.95)
         pred = 1 if prob > 0.5 else 0
 
         st.markdown("### 📌 Prediction Result")
@@ -116,13 +126,13 @@ elif page == "Single Prediction":
         st.markdown("### 💡 Explanation")
 
         if pred == 1:
-            st.warning("Customer shows potential churn behavior based on inputs.")
+            st.warning("Customer shows potential churn behavior based on inputs like low tenure, high spending, or flexible contract.")
         else:
-            st.success("Customer appears stable.")
+            st.success("Customer appears stable with long-term or consistent engagement.")
 
-        # ---------------- SIMPLE VISUAL ---------------- #
+        # ---------------- VISUAL ---------------- #
         st.markdown("---")
-        st.subheader("📊 Demo Feature Impact")
+        st.subheader("📊 Feature Overview")
 
         features = ["Tenure", "Monthly", "Total", "Age"]
         values = [tenure, monthly, total, age]
@@ -143,9 +153,26 @@ elif page == "Bulk Prediction":
         df = pd.read_csv(file)
         st.dataframe(df.head())
 
-        # ---------------- DEMO OUTPUT ---------------- #
-        df["Prediction"] = ["Churn" if random.random() > 0.5 else "No Churn" for _ in range(len(df))]
-        df["Churn Probability"] = [round(random.uniform(0.2, 0.9), 2) for _ in range(len(df))]
+        # ---------------- DEMO BULK LOGIC ---------------- #
+        predictions = []
+        probabilities = []
+
+        for _, row in df.iterrows():
+            prob = 0.3
+
+            if "tenure" in df.columns and row["tenure"] < 6:
+                prob += 0.3
+            if "monthly" in df.columns and row["monthly"] > 500:
+                prob += 0.2
+
+            prob = min(prob, 0.95)
+            pred = "Churn" if prob > 0.5 else "No Churn"
+
+            predictions.append(pred)
+            probabilities.append(round(prob, 2))
+
+        df["Prediction"] = predictions
+        df["Churn Probability"] = probabilities
 
         st.markdown("### 📊 Results")
         st.dataframe(df)
