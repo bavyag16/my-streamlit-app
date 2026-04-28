@@ -63,14 +63,17 @@ elif page == "Single Prediction":
         age = st.number_input("Age", 0, 100)
         senior = 1 if age >= 60 else 0
 
+    # Dynamic labels
     if domain == "Telecom":
         tenure_label = "Tenure (months)"
         monthly_label = "Monthly Charges"
         total_label = "Total Charges"
+
     elif domain == "Banking":
         tenure_label = "Account Duration (months)"
         monthly_label = "Monthly Transactions"
         total_label = "Total Balance"
+
     else:
         tenure_label = "Customer Duration (months)"
         monthly_label = "Monthly Spend"
@@ -80,8 +83,11 @@ elif page == "Single Prediction":
         tenure = st.number_input(tenure_label, 0, 120)
         monthly = st.number_input(monthly_label, 0.0, 1000.0)
 
+    # ✅ AUTO CALCULATED TOTAL
     with col3:
-        total = st.number_input(total_label, 0.0, 50000.0)
+        total = tenure * monthly
+        st.metric(label=total_label, value=round(total, 2))
+
         contract = st.selectbox("Contract Type", ["Month-to-month", "One year", "Two year"])
         payment = st.selectbox("Payment Method", [
             "Electronic check", "Mailed check",
@@ -90,29 +96,23 @@ elif page == "Single Prediction":
 
     st.markdown("---")
 
+    # ✅ DEMO PREDICTION (NO MODEL)
     if st.button("🚀 Predict Churn"):
 
-        # ---------------- SMART DEMO LOGIC ---------------- #
-        prob = 0.3
-
-        if tenure < 6:
-            prob += 0.3
-        if monthly > 500:
-            prob += 0.2
-        if contract == "Month-to-month":
-            prob += 0.2
-        if senior == 1:
-            prob += 0.1
-
-        prob = min(prob, 0.95)
-        pred = 1 if prob > 0.5 else 0
+        # Fake logic for demo
+        if monthly > 500 or tenure < 6:
+            pred = 1
+            prob = 0.78
+        else:
+            pred = 0
+            prob = 0.22
 
         st.markdown("### 📌 Prediction Result")
 
         if pred == 1:
-            st.error(f"⚠ {name if name else 'Customer'} WILL CHURN (Risk: {prob})")
+            st.error(f"⚠ {name if name else 'Customer'} WILL CHURN (Risk: {prob:.2f})")
         else:
-            st.success(f"✅ {name if name else 'Customer'} will STAY (Risk: {prob})")
+            st.success(f"✅ {name if name else 'Customer'} will STAY (Risk: {prob:.2f})")
 
         # Risk level
         if prob > 0.7:
@@ -126,16 +126,16 @@ elif page == "Single Prediction":
         st.markdown("### 💡 Explanation")
 
         if pred == 1:
-            st.warning("Customer shows potential churn behavior based on inputs like low tenure, high spending, or flexible contract.")
+            st.warning("Customer may churn due to high spend or short engagement.")
         else:
-            st.success("Customer appears stable with long-term or consistent engagement.")
+            st.success("Customer is stable based on current behavior.")
 
-        # ---------------- VISUAL ---------------- #
+        # Simple visualization
         st.markdown("---")
-        st.subheader("📊 Feature Overview")
+        st.subheader("📊 Feature Impact (Demo)")
 
-        features = ["Tenure", "Monthly", "Total", "Age"]
-        values = [tenure, monthly, total, age]
+        features = ["Tenure", "Monthly", "Total"]
+        values = [tenure, monthly, total]
 
         fig, ax = plt.subplots()
         ax.barh(features, values)
@@ -153,33 +153,20 @@ elif page == "Bulk Prediction":
         df = pd.read_csv(file)
         st.dataframe(df.head())
 
-        # ---------------- DEMO BULK LOGIC ---------------- #
-        predictions = []
-        probabilities = []
+        # Auto-calc total if columns exist
+        if "tenure" in df.columns and "monthlycharges" in df.columns:
+            df["totalcharges"] = df["tenure"] * df["monthlycharges"]
 
-        for _, row in df.iterrows():
-            prob = 0.3
-
-            if "tenure" in df.columns and row["tenure"] < 6:
-                prob += 0.3
-            if "monthly" in df.columns and row["monthly"] > 500:
-                prob += 0.2
-
-            prob = min(prob, 0.95)
-            pred = "Churn" if prob > 0.5 else "No Churn"
-
-            predictions.append(pred)
-            probabilities.append(round(prob, 2))
-
-        df["Prediction"] = predictions
-        df["Churn Probability"] = probabilities
+        # Demo predictions
+        df["Prediction"] = df["monthlycharges"].apply(lambda x: 1 if x > 500 else 0)
+        df["Churn Probability"] = df["Prediction"].apply(lambda x: 0.75 if x == 1 else 0.25)
 
         st.markdown("### 📊 Results")
         st.dataframe(df)
 
-        churn_counts = df["Prediction"].value_counts()
+        # Graph
+        churn_counts = df["Prediction"].value_counts().reindex([0,1], fill_value=0)
 
         fig, ax = plt.subplots()
-        ax.bar(churn_counts.index, churn_counts.values)
-
+        ax.bar(["No Churn", "Churn"], churn_counts)
         st.pyplot(fig)
