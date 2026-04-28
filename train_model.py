@@ -4,11 +4,12 @@ from sklearn.metrics import accuracy_score
 from xgboost import XGBClassifier
 import joblib
 import os
+import matplotlib.pyplot as plt
 
-# ---------------- 1. LOAD DATASET ---------------- #
+# ---------------- 1. LOAD DATA ---------------- #
 df = pd.read_csv("data/telco_churn.csv")
 
-# ---------------- 2. CLEAN COLUMN NAMES ---------------- #
+# ---------------- 2. CLEAN COLUMNS ---------------- #
 df.columns = df.columns.str.strip().str.lower()
 
 print("Columns:", df.columns)
@@ -21,15 +22,10 @@ if "unnamed: 0" in df.columns:
     df.drop("unnamed: 0", axis=1, inplace=True)
 
 # ---------------- 4. CLEAN TOTALCHARGES ---------------- #
-if "totalcharges" in df.columns:
-    df["totalcharges"] = pd.to_numeric(df["totalcharges"], errors="coerce")
-    df["totalcharges"] = df["totalcharges"].fillna(df["totalcharges"].median())
+df["totalcharges"] = pd.to_numeric(df["totalcharges"], errors="coerce")
+df["totalcharges"] = df["totalcharges"].fillna(df["totalcharges"].median())
 
-# ---------------- 5. CLEAN CHURN ---------------- #
-if "churn" not in df.columns:
-    print("❌ ERROR: churn column not found!")
-    exit()
-
+# ---------------- 5. CLEAN TARGET ---------------- #
 df["churn"] = df["churn"].astype(str).str.strip().str.lower()
 
 df["churn"] = df["churn"].map({
@@ -41,11 +37,7 @@ df["churn"] = df["churn"].map({
     "false": 0
 })
 
-if df["churn"].isnull().sum() > 0:
-    print("❌ ERROR: churn still has missing values!")
-    exit()
-
-# ---------------- 6. SELECT ONLY REQUIRED FEATURES ---------------- #
+# ---------------- 6. SELECT FEATURES ---------------- #
 df = df[[
     "tenure",
     "monthlycharges",
@@ -71,14 +63,25 @@ model = XGBClassifier(
 
 model.fit(X_train, y_train)
 
-# ---------------- 9. PREDICTION ---------------- #
+# ---------------- 9. PREDICT ---------------- #
 y_pred = model.predict(X_test)
 
 # ---------------- 10. ACCURACY ---------------- #
 print("Accuracy:", accuracy_score(y_test, y_pred))
 
-# ---------------- 11. SAVE MODEL ---------------- #
+# ---------------- 11. CREATE MODELS FOLDER ---------------- #
 os.makedirs("models", exist_ok=True)
+
+# ---------------- 12. SAVE MODEL ---------------- #
 joblib.dump(model, "models/churn_model.pkl")
+
+# ---------------- 13. FEATURE IMPORTANCE ---------------- #
+importance = model.feature_importances_
+features = X.columns
+
+plt.figure()
+plt.barh(features, importance)
+plt.title("Feature Importance")
+plt.savefig("models/feature_importance.png")
 
 print("✅ Model trained and saved successfully!")
