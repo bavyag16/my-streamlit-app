@@ -1,36 +1,34 @@
 import pandas as pd
-
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from xgboost import XGBClassifier
 import joblib
+import os
 
-# 1. Load dataset
+# ---------------- 1. LOAD DATASET ---------------- #
 df = pd.read_csv("data/telco_churn.csv")
 
-# 2. Standardize column names
+# ---------------- 2. CLEAN COLUMN NAMES ---------------- #
 df.columns = df.columns.str.strip().str.lower()
 
 print("Columns:", df.columns)
 
-# 3. Drop unnecessary columns
+# ---------------- 3. DROP UNNECESSARY COLUMNS ---------------- #
 if "customerid" in df.columns:
     df.drop("customerid", axis=1, inplace=True)
 
 if "unnamed: 0" in df.columns:
     df.drop("unnamed: 0", axis=1, inplace=True)
 
-# 4. Fix TotalCharges
+# ---------------- 4. CLEAN TOTALCHARGES ---------------- #
 if "totalcharges" in df.columns:
     df["totalcharges"] = pd.to_numeric(df["totalcharges"], errors="coerce")
     df["totalcharges"] = df["totalcharges"].fillna(df["totalcharges"].median())
 
-# 5. Fix Churn column (handle all formats)
+# ---------------- 5. CLEAN CHURN ---------------- #
 if "churn" not in df.columns:
-    print("❌ ERROR: 'churn' column not found!")
+    print("❌ ERROR: churn column not found!")
     exit()
-
-print("Original Churn values:", df["churn"].unique())
 
 df["churn"] = df["churn"].astype(str).str.strip().str.lower()
 
@@ -43,16 +41,19 @@ df["churn"] = df["churn"].map({
     "false": 0
 })
 
-print("Mapped Churn values:", df["churn"].unique())
-
 if df["churn"].isnull().sum() > 0:
-    print("❌ Error: Churn still has NaN values!")
+    print("❌ ERROR: churn still has missing values!")
     exit()
 
-# 6. Convert categorical columns (IMPORTANT FIX)
-df = pd.get_dummies(df, drop_first=True)
+# ---------------- 6. SELECT ONLY REQUIRED FEATURES ---------------- #
+df = df[[
+    "tenure",
+    "monthlycharges",
+    "totalcharges",
+    "churn"
+]]
 
-# 7. Split data
+# ---------------- 7. SPLIT DATA ---------------- #
 X = df.drop("churn", axis=1)
 y = df["churn"]
 
@@ -60,7 +61,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-# 8. Train model
+# ---------------- 8. TRAIN MODEL ---------------- #
 model = XGBClassifier(
     n_estimators=200,
     max_depth=5,
@@ -70,13 +71,14 @@ model = XGBClassifier(
 
 model.fit(X_train, y_train)
 
-# 9. Prediction
+# ---------------- 9. PREDICTION ---------------- #
 y_pred = model.predict(X_test)
 
-# 10. Accuracy
+# ---------------- 10. ACCURACY ---------------- #
 print("Accuracy:", accuracy_score(y_test, y_pred))
 
-# 11. Save model
+# ---------------- 11. SAVE MODEL ---------------- #
+os.makedirs("models", exist_ok=True)
 joblib.dump(model, "models/churn_model.pkl")
 
-print("✅ Model saved successfully!")
+print("✅ Model trained and saved successfully!")
